@@ -7,7 +7,7 @@ from uuid import UUID
 from database import get_db
 from models import Place
 from request_models.places_model import PlaceCreate
-from response_models.places_model import PlaceResponse, PlaceListResponse
+from response_models.places_model import PlaceResponse, PlaceListResponse, PlaceDeleteResponse
 
 router = APIRouter(prefix="/places", tags=["places"])
 
@@ -52,6 +52,8 @@ def create_place(place: PlaceCreate, db: Session = Depends(get_db)):
         db.rollback()
         logging.error(f"Error creating place: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        db.close()
 
     return new_place
 
@@ -70,11 +72,17 @@ def get_place(
 
     logging.debug("Fetching place by id: %s", place_id)
 
-    place = (
-        db.query(Place)
-        .filter(Place.id == place_id)
-        .first()
-    )
+    try:
+        place = (
+            db.query(Place)
+            .filter(Place.id == place_id)
+            .first()
+        )
+    except Exception as e:
+        logging.error(f"Error fetching place: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        db.close()
 
     if place is None:
         logging.debug("Place not found: id=%s", place_id)
@@ -84,18 +92,20 @@ def get_place(
         )
 
     logging.debug(
-        "Place found: id=%s, name=%s, latitude=%s, longitude=%s",
+        "Place found: id=%s, name=%s, type_id=%s, parent_id=%s, latitude=%s, longitude=%s",
         place.id,
         place.name,
+        place.type_id,
+        place.parent_id,
         place.latitude,
         place.longitude,
     )
 
-    logging.debug(f"Place found: {place}")
-
     return PlaceResponse(
         id=place.id,
         name=place.name,
+        type_id=place.type_id,
+        parent_id=place.parent_id,
         latitude=place.latitude,
         longitude=place.longitude,
     )
@@ -108,7 +118,13 @@ def get_all_places(db: Session = Depends(get_db)):
     """Get all places with id and name only."""
     logging.debug("Fetching all places")
 
-    places = db.query(Place).all()
+    try:
+        places = db.query(Place).all()
+    except Exception as e:
+        logging.error(f"Error fetching places: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        db.close()
 
     logging.debug("Places found: count=%s", len(places))
     logging.debug(f'{places}')
@@ -120,3 +136,107 @@ def get_all_places(db: Session = Depends(get_db)):
         )
         for place in places
     ]
+
+
+@router.put(
+    "/{place_id}",
+    response_model=PlaceResponse,
+    tags=["places"],
+    summary="Update Place",
+)
+def update_place(
+    place_id: UUID,
+    place: PlaceCreate,
+    db: Session = Depends(get_db),
+):
+    """Update an existing place by its ID."""
+
+    logging.debug(
+        "Updating place: id=%s, name=%s, type_id=%s, parent_id=%s, latitude=%s, longitude=%s",
+        place_id,
+        place.name,
+        place.type_id,
+        place.parent_id,
+        place.latitude,
+        place.longitude,
+    )
+
+    try:
+        existing_place = (
+            db.query(Place)
+            .filter(Place.id == place_id)
+            .first()
+        )
+    except Exception as e:
+        logging.error(f"Error fetching place: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if existing_place is None:
+        logging.debug("Place not found: id=%s", place_id)
+        raise HTTPException(
+            status_code=404,
+            detail="Place not found",
+        )
+
+    try:
+        existing_place.name = place.name
+        existing_place.type_id = place.type_id
+        existing_place.parent_id = place.parent_id
+        existing_place.latitude = place.latitude
+        existing_place.longitude = place.longitude
+        existing_place.geom = func.ST_GeomFromText(
+            f"POINT({place.longitude} {place.latitude})", 4326
+        )
+        db.commit()
+        db.refresh(existing_place)
+
+        logging.info(f"Place updated successfully: {existing_place.id}")
+        logging.debug(f"Place updated: {existing_place}")
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Error updating place: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        db.close()
+
+    return existing_place
+
+
+@router.delete(
+    "/{place_id}",
+    response_model=PlaceDeleteResponse,
+    tags=["places"],
+    summary="Delete Place",
+)
+def delete_place(
+    place_id: UUID,
+    db: Session = Depends(get_db),
+):
+    """Delete a place by its ID."""
+
+    logging.debug("Deleting place: id=%s", place_id)
+
+    try:
+        existing_place = (
+            db.query(Place)
+            .filter(Place.id == place_id)
+            .first()
+        )
+    except Exception as e:
+        logging.error(f"Error fetching place: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+    try:
+        db.delete(existing_place)
+        db.commit()
+
+        logging.info(f"Place deleted successfully: {place_id}")
+        logging.debug(f"Place deleted: {existing_place}")
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Error deleting place: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    finally:
+        db.close()
+
+    return PlaceDeleteResponse(id=place_id)

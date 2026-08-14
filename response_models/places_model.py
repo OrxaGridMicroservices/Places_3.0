@@ -48,3 +48,12 @@ class PlaceListResponse(BaseModel):
         description="Name of the place",
         examples=["MP", "Central Park", "Eiffel Tower"]
     )
+
+class PlaceDeleteResponse(BaseModel):
+    """Response model for place deletion."""
+
+    id: str = Field(
+        ...,
+        description="Result message of the delete operation",
+        examples=["550e8400-e29b-41d4-a716-446655440000"]
+    )
