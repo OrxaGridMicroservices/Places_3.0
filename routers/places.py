@@ -366,7 +366,7 @@ def get_place_descendants(
 
     finally:
         db.close()
-        
+
     return {
                 "descendants": paginated_descendants
             }
