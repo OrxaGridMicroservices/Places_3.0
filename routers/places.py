@@ -1,13 +1,13 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from uuid import UUID
 
 from database import get_db
 from models import Place
 from request_models.places_model import PlaceCreate
-from response_models.places_model import PlaceResponse, PlaceListResponse, PlaceDeleteResponse
+from response_models.places_model import PlaceDescendantItem, PlaceDescendantsResponse, PlaceResponse, PlaceListResponse, PlaceDeleteResponse
 
 router = APIRouter(prefix="/places", tags=["places"])
 
@@ -114,12 +114,32 @@ def get_place(
             response_model=list[PlaceListResponse],
             tags=["places"],
             summary="Get List Of Places")
-def get_all_places(db: Session = Depends(get_db)):
+def get_all_places(
+    db: Session = Depends(get_db),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
+    type_id: Optional[str] = Query(None, description="Filter places by type_id"),
+):
     """Get all places with id and name only."""
-    logging.debug("Fetching all places")
+    logging.debug(
+        "Fetching all places: page=%s, page_size=%s, type_id=%s",
+        page,
+        page_size,
+        type_id,
+    )
 
     try:
-        places = db.query(Place).all()
+        query = db.query(Place)
+
+        if type_id is not None:
+            query = query.filter(Place.type_id == type_id)
+
+        places = (
+            query
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+            .all()
+        )
     except Exception as e:
         logging.error(f"Error fetching places: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -240,3 +260,102 @@ def delete_place(
         db.close()
 
     return PlaceDeleteResponse(id=place_id)
+
+
+@router.get(
+    "/descendants/{place_id}",
+    response_model=PlaceDescendantsResponse,
+    tags=["places"],
+    summary="Get Place descendants by ID",
+)
+def get_place_descendants(
+    place_id: str,
+    db: Session = Depends(get_db),
+):
+    """
+    Get all descendants of a place.
+    """
+
+    logging.debug(
+        "Fetching descendants for place_id=%s",
+        place_id
+    )
+
+    try:
+        # First verify that the requested place exists
+        place = (
+            db.query(Place)
+            .filter(Place.id == place_id)
+            .first()
+        )
+
+        if place is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Place not found",
+            )
+
+        descendants = []
+        visited = {str(place_id)}
+
+        def get_children(parent_id: str):
+            children = (
+                db.query(Place)
+                .filter(Place.parent_id == parent_id)
+                .all()
+            )
+
+            for child in children:
+
+                child_id = str(child.id)
+
+                if child_id in visited:
+                    continue
+
+                visited.add(child_id)
+
+                descendants.append(
+                    PlaceDescendantItem(
+                        id=child_id,
+                        name=child.name,
+                        type_id=str(child.type_id),
+                        parent_id=(
+                            str(child.parent_id)
+                            if child.parent_id
+                            else None
+                        ),
+                    )
+                )
+
+                # Find descendants of this child
+                get_children(child_id)
+
+        # Start recursive traversal
+        get_children(str(place_id))
+
+        logging.debug(
+            "Found %s descendants for place_id=%s",
+            len(descendants),
+            place_id,
+        )
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logging.error(
+            "Error fetching descendants: %s",
+            str(e),
+        )
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
+    finally:
+        db.close()
+        
+    return {
+                "descendants": descendants
+            }
+    
