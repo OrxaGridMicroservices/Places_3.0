@@ -10,7 +10,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Include routers
