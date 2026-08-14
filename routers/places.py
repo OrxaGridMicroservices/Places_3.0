@@ -7,7 +7,7 @@ from uuid import UUID
 from database import get_db
 from models import Place
 from request_models.places_model import PlaceCreate
-from response_models.places_model import PlaceResponse
+from response_models.places_model import PlaceResponse, PlaceListResponse
 
 router = APIRouter(prefix="/places", tags=["places"])
 
@@ -101,11 +101,11 @@ def get_place(
     )
 
 @router.get("", 
-            response_model=list[PlaceResponse],
+            response_model=list[PlaceListResponse],
             tags=["places"],
             summary="Get List Of Places")
 def get_all_places(db: Session = Depends(get_db)):
-    """Get all places."""
+    """Get all places with id and name only."""
     logging.debug("Fetching all places")
 
     places = db.query(Place).all()
@@ -113,4 +113,10 @@ def get_all_places(db: Session = Depends(get_db)):
     logging.debug("Places found: count=%s", len(places))
     logging.debug(f'{places}')
 
-    return places
+    return [
+        PlaceListResponse(
+            id=place.id,
+            name=place.name,
+        )
+        for place in places
+    ]
