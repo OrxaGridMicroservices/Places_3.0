@@ -1,16 +1,21 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from uuid import UUID
 from typing import Optional
 
 
 class PlaceResponse(BaseModel):
     """Response model for place data."""
-    
-    id: UUID = Field(
+
+    id: str = Field(
         ...,
         description="Unique identifier of the place",
         examples=["550e8400-e29b-41d4-a716-446655440000"]
     )
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def _stringify_id(cls, value):
+        return str(value)
     name: str = Field(
         ...,
         description="Name of the place",
@@ -38,7 +43,7 @@ class PlaceResponse(BaseModel):
     )
 
 class PlaceListResponse(BaseModel):
-    id: UUID = Field(
+    id: str = Field(
         ...,
         description="Unique identifier of the place",
         examples=["550e8400-e29b-41d4-a716-446655440000"]
@@ -48,6 +53,11 @@ class PlaceListResponse(BaseModel):
         description="Name of the place",
         examples=["MP", "Central Park", "Eiffel Tower"]
     )
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def _stringify_id(cls, value):
+        return str(value)
 
 class PlaceDeleteResponse(BaseModel):
     """Response model for place deletion."""

@@ -65,7 +65,7 @@ def create_place(place: PlaceCreate, db: Session = Depends(get_db)):
     summary="Get Place details by ID",
 )
 def get_place(
-    place_id: UUID,
+    place_id: str,
     db: Session = Depends(get_db),
 ):
     """Get a place by its ID."""
@@ -145,7 +145,7 @@ def get_all_places(db: Session = Depends(get_db)):
     summary="Update Place",
 )
 def update_place(
-    place_id: UUID,
+    place_id: str,
     place: PlaceCreate,
     db: Session = Depends(get_db),
 ):
@@ -209,7 +209,7 @@ def update_place(
     summary="Delete Place",
 )
 def delete_place(
-    place_id: UUID,
+    place_id: str,
     db: Session = Depends(get_db),
 ):
     """Delete a place by its ID."""
