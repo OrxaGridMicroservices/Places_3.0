@@ -119,6 +119,7 @@ def get_all_places(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
     type_id: Optional[str] = Query(None, description="Filter places by type_id"),
+    name: Optional[str] = Query(default=None, description="The case insensitive 'substring' filter")
 ):
     """Get all places with id and name only."""
     logging.debug(
@@ -133,6 +134,9 @@ def get_all_places(
 
         if type_id is not None:
             query = query.filter(Place.type_id == type_id)
+
+        if name is not None:
+            query = query.filter(Place.name.ilike(f"%{name}%"))
 
         places = (
             query
@@ -271,14 +275,18 @@ def delete_place(
 def get_place_descendants(
     place_id: str,
     db: Session = Depends(get_db),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
 ):
     """
     Get all descendants of a place.
     """
 
     logging.debug(
-        "Fetching descendants for place_id=%s",
-        place_id
+        "Fetching descendants for place_id=%s, page=%s, page_size=%s",
+        place_id,
+        page,
+        page_size,
     )
 
     try:
@@ -338,6 +346,10 @@ def get_place_descendants(
             len(descendants),
             place_id,
         )
+
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_descendants = descendants[start:end]
     except HTTPException:
         raise
 
@@ -356,6 +368,6 @@ def get_place_descendants(
         db.close()
         
     return {
-                "descendants": descendants
+                "descendants": paginated_descendants
             }
     
