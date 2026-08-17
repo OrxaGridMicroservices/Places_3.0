@@ -12,7 +12,7 @@ from response_models.place_types_model import (
     PlaceTypeDeleteResponse,
 )
 
-router = APIRouter(prefix="/place-types", tags=["place-types"])
+router = APIRouter(prefix="/place/types", tags=["place/types"])
 
 DEFAULT_PLACE_TYPES = [
     {"name": "Country", "level": 10},
@@ -39,7 +39,7 @@ def seed_default_place_types(db: Session):
 
 @router.post("",
              response_model=PlaceTypeResponse,
-             tags=["place-types"],
+             tags=["place/types"],
              summary="Create Place Type")
 def create_place_type(place_type: PlaceTypeCreate, db: Session = Depends(get_db)):
     """Create a new place type in the database."""
@@ -74,7 +74,7 @@ def create_place_type(place_type: PlaceTypeCreate, db: Session = Depends(get_db)
 @router.get(
     "/{id}",
     response_model=PlaceTypeResponse,
-    tags=["place-types"],
+    tags=["place/types"],
     summary="Get Place Type details by ID",
 )
 def get_place_type(
@@ -120,11 +120,11 @@ def get_place_type(
 
 @router.get("",
             response_model=list[PlaceTypeListResponse],
-            tags=["place-types"],
+            tags=["place/types"],
             summary="Get List Of Place Types")
 def get_all_place_types(
     db: Session = Depends(get_db),
-    page: int = Query(1, ge=1, description="Page number"),
+    page: int = Query(0, ge=0, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
     name: Optional[str] = Query(default=None, description="The case insensitive 'substring' filter"),
 ):
@@ -145,7 +145,7 @@ def get_all_place_types(
 
         place_types = (
             query
-            .offset((page - 1) * page_size)
+            .offset(page * page_size)
             .limit(page_size)
             .all()
         )
@@ -170,7 +170,7 @@ def get_all_place_types(
 @router.put(
     "/{id}",
     response_model=PlaceTypeResponse,
-    tags=["place-types"],
+    tags=["place/types"],
     summary="Update Place Type",
 )
 def update_place_type(
@@ -225,7 +225,7 @@ def update_place_type(
 @router.delete(
     "/{id}",
     response_model=PlaceTypeDeleteResponse,
-    tags=["place-types"],
+    tags=["place/types"],
     summary="Delete Place Type",
 )
 def delete_place_type(

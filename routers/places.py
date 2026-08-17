@@ -116,7 +116,7 @@ def get_place(
             summary="Get List Of Places")
 def get_all_places(
     db: Session = Depends(get_db),
-    page: int = Query(1, ge=1, description="Page number"),
+    page: int = Query(0, ge=0, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
     type_id: Optional[str] = Query(None, description="Filter places by type_id"),
     name: Optional[str] = Query(default=None, description="The case insensitive 'substring' filter")
@@ -140,7 +140,7 @@ def get_all_places(
 
         places = (
             query
-            .offset((page - 1) * page_size)
+            .offset(page * page_size)
             .limit(page_size)
             .all()
         )
@@ -275,7 +275,7 @@ def delete_place(
 def get_place_descendants(
     place_id: str,
     db: Session = Depends(get_db),
-    page: int = Query(1, ge=1, description="Page number"),
+    page: int = Query(0, ge=0, description="Page number"),
     page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
 ):
     """
@@ -347,7 +347,7 @@ def get_place_descendants(
             place_id,
         )
 
-        start = (page - 1) * page_size
+        start = page * page_size
         end = start + page_size
         paginated_descendants = descendants[start:end]
     except HTTPException:
