@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field, field_validator
-from uuid import UUID
 from typing import List, Optional
 
 
@@ -11,22 +10,17 @@ class PlaceResponse(BaseModel):
         description="Unique identifier of the place",
         examples=["550e8400-e29b-41d4-a716-446655440000"]
     )
-
-    @field_validator("id", mode="before")
-    @classmethod
-    def _stringify_id(cls, value):
-        return str(value)
     name: str = Field(
         ...,
         description="Name of the place",
         examples=["India"]
     )
-    type_id: UUID = Field(
+    type_id: str = Field(
         ...,
         description="UUID of the place type",
         examples=["00589010-cb58-11f0-ba61-e18b1d833212"]
     )
-    parent_id: Optional[UUID] = Field(
+    parent_id: Optional[str] = Field(
         None,
         description="UUID of the parent place (for hierarchical places)",
         examples=["014e3ab0-cb58-11f0-ba61-e18b1d833212"]
@@ -41,6 +35,12 @@ class PlaceResponse(BaseModel):
         description="Longitude coordinate (WGS84)",
         examples=[70.5678, -74.0060, 2.2922]
     )
+
+    @field_validator("id", "type_id", "parent_id", mode="before")
+    @classmethod
+    def _stringify_id(cls, value):
+        return str(value) if value is not None else value
+
 
 class PlaceListResponse(BaseModel):
     id: str = Field(
@@ -80,16 +80,21 @@ class PlaceDescendantItem(BaseModel):
             description="Name of the place",
             examples=["India"]
     )
-    type_id: UUID = Field(
+    type_id: str = Field(
             ...,
             description="UUID of the place type",
             examples=["00589010-cb58-11f0-ba61-e18b1d833212"]
     )
-    parent_id: Optional[UUID] = Field(
+    parent_id: Optional[str] = Field(
             None,
             description="UUID of the parent place (for hierarchical places)",
             examples=["014e3ab0-cb58-11f0-ba61-e18b1d833212"]
     )
+
+    @field_validator("id", "type_id", "parent_id", mode="before")
+    @classmethod
+    def _stringify_id(cls, value):
+        return str(value) if value is not None else value
 
 
 class PlaceDescendantsResponse(BaseModel):

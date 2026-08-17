@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-from uuid import UUID
 from typing import Optional
 
 
@@ -11,12 +10,12 @@ class PlaceCreate(BaseModel):
         description="Name of the place",
         examples=["India"]
     )
-    type_id: UUID = Field(
+    type_id: str = Field(
         ...,
         description="UUID of the place type",
         examples=["00589010-cb58-11f0-ba61-e18b1d833212"]
     )
-    parent_id: Optional[UUID] = Field(
+    parent_id: Optional[str] = Field(
         None,
         description="UUID of the parent place (for hierarchical places)",
         examples=["014e3ab0-cb58-11f0-ba61-e18b1d833212"]

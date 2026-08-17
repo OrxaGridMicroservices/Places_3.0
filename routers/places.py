@@ -14,6 +14,7 @@ router = APIRouter(prefix="/places", tags=["places"])
 
 @router.post("", 
             response_model=PlaceResponse,
+            response_model_exclude_none=True,
             tags=["places"],
             summary="Create Place")
 def create_place(place: PlaceCreate, db: Session = Depends(get_db)):
@@ -61,6 +62,7 @@ def create_place(place: PlaceCreate, db: Session = Depends(get_db)):
 @router.get(
     "/{place_id}",
     response_model=PlaceResponse,
+    response_model_exclude_none=True,
     tags=["places"],
     summary="Get Place details by ID",
 )
@@ -165,6 +167,7 @@ def get_all_places(
 @router.put(
     "/{place_id}",
     response_model=PlaceResponse,
+    response_model_exclude_none=True,
     tags=["places"],
     summary="Update Place",
 )
