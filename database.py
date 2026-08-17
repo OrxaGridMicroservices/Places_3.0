@@ -1,12 +1,9 @@
 import os
 import time
 
-from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
 from sqlalchemy.orm import sessionmaker, declarative_base
-
-load_dotenv()
 
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
@@ -26,11 +23,6 @@ DATABASE_URL = URL.create(
     database=POSTGRES_DB,
 )
 
-print(
-    f"Connecting to database: "
-    f"{POSTGRES_USER}@postgis-db:5432/{POSTGRES_DB}"
-)
-
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
@@ -43,7 +35,6 @@ SessionLocal = sessionmaker(
 )
 
 Base = declarative_base()
-
 
 def init_db(max_retries: int = 10, retry_delay: int = 2):
     for attempt in range(max_retries):
