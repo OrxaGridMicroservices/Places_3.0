@@ -1,9 +1,15 @@
 import logging
+
 from fastapi import FastAPI
-from routers.places import router as places_router
-from routers.place_types import router as place_types_router, seed_default_place_types
-from models import Base
+
 from database import engine, SessionLocal
+from models import Base
+
+from routers.places import router as places_router
+from routers.place_types import (
+    router as place_types_router,
+    seed_default_place_types,
+)
 
 # Create tables
 Base.metadata.create_all(bind=engine)

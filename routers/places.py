@@ -293,19 +293,6 @@ def get_place_descendants(
     )
 
     try:
-        # First verify that the requested place exists
-        place = (
-            db.query(Place)
-            .filter(Place.id == place_id)
-            .first()
-        )
-
-        if place is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Place not found",
-            )
-
         descendants = []
         visited = {str(place_id)}
 
