@@ -9,8 +9,3 @@ class PlaceTypeCreate(BaseModel):
         description="Name of the place type",
         examples=["Country"]
     )
-    level: int = Field(
-        ...,
-        description="Hierarchy level of the place type",
-        examples=[10]
-    )

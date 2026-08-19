@@ -20,11 +20,6 @@ class PlaceTypeResponse(BaseModel):
         description="Name of the place type",
         examples=["Country"]
     )
-    level: int = Field(
-        ...,
-        description="Hierarchy level of the place type",
-        examples=[10]
-    )
 
 
 class PlaceTypeListResponse(BaseModel):
@@ -37,11 +32,6 @@ class PlaceTypeListResponse(BaseModel):
         ...,
         description="Name of the place type",
         examples=["Country"]
-    )
-    level: int = Field(
-        ...,
-        description="Hierarchy level of the place type",
-        examples=[10]
     )
 
     @field_validator("id", mode="before")

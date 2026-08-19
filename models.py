@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Integer, UUID as SQLAlchemy_UUID
+from sqlalchemy import Column, String, Float, UUID as SQLAlchemy_UUID
 from geoalchemy2 import Geometry
 import uuid
 from database import Base
@@ -21,4 +21,3 @@ class PlaceType(Base):
 
     id = Column(SQLAlchemy_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False, unique=True)
-    level = Column(Integer, nullable=False)

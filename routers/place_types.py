@@ -15,9 +15,10 @@ from response_models.place_types_model import (
 router = APIRouter(prefix="/place/types", tags=["place/types"])
 
 DEFAULT_PLACE_TYPES = [
-    {"name": "Country", "level": 10},
-    {"name": "State", "level": 20},
-    {"name": "City", "level": 30},
+    {"name": "Country"},
+    {"name": "State"},
+    {"name": "City"},
+    {"name":"asset"},
 ]
 
 
@@ -32,7 +33,7 @@ def seed_default_place_types(db: Session):
         )
 
         if existing is None:
-            db.add(PlaceType(name=default_type["name"], level=default_type["level"]))
+            db.add(PlaceType(name=default_type["name"],))
 
     db.commit()
 
@@ -45,15 +46,13 @@ def create_place_type(place_type: PlaceTypeCreate, db: Session = Depends(get_db)
     """Create a new place type in the database."""
 
     logging.debug(
-        "Creating place type: name=%s, level=%s",
+        "Creating place type: name=%s",
         place_type.name,
-        place_type.level,
     )
 
     try:
         new_place_type = PlaceType(
             name=place_type.name,
-            level=place_type.level,
         )
         db.add(new_place_type)
         db.commit()
@@ -105,16 +104,14 @@ def get_place_type(
         )
 
     logging.debug(
-        "Place type found: id=%s, name=%s, level=%s",
+        "Place type found: id=%s, name=%s",
         place_type.id,
         place_type.name,
-        place_type.level,
     )
 
     return PlaceTypeResponse(
         id=place_type.id,
         name=place_type.name,
-        level=place_type.level,
     )
 
 
@@ -161,7 +158,6 @@ def get_all_place_types(
         PlaceTypeListResponse(
             id=place_type.id,
             name=place_type.name,
-            level=place_type.level,
         )
         for place_type in place_types
     ]
@@ -181,10 +177,9 @@ def update_place_type(
     """Update an existing place type by its ID."""
 
     logging.debug(
-        "Updating place type: id=%s, name=%s, level=%s",
+        "Updating place type: id=%s, name=%s",
         id,
         place_type.name,
-        place_type.level,
     )
 
     try:
@@ -206,7 +201,6 @@ def update_place_type(
 
     try:
         existing_place_type.name = place_type.name
-        existing_place_type.level = place_type.level
         db.commit()
         db.refresh(existing_place_type)
 
