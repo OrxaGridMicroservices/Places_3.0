@@ -12,18 +12,17 @@ from response_models.place_types_model import (
     PlaceTypeDeleteResponse,
 )
 
-router = APIRouter(prefix="/place/types", tags=["place/types"])
+router = APIRouter(prefix="/places/types", tags=["place/types"])
 
 DEFAULT_PLACE_TYPES = [
     {"name": "Country"},
     {"name": "State"},
     {"name": "City"},
-    {"name":"asset"},
+    {"name": "asset"},
 ]
 
-
 def seed_default_place_types(db: Session):
-    """Seed default place types (Country, State, City) if they don't already exist."""
+    """Seed default place types (Country, State, City, asset) if they don't already exist."""
 
     for default_type in DEFAULT_PLACE_TYPES:
         existing = (
