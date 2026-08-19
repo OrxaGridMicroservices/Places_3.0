@@ -24,9 +24,10 @@ def create_place(place: PlaceCreate, db: Session = Depends(get_db)):
     The endpoint accepts latitude and longitude and creates a PostGIS geometry point.
     """
     logging.debug(
-        "Creating place: name=%s, type_id=%s, latitude=%s, longitude=%s",
+        "Creating place: name=%s, type_id=%s, asset_id=%s, latitude=%s, longitude=%s",
         place.name,
         place.type_id,
+        place.asset_id,
         place.latitude,
         place.longitude,
     )
@@ -35,6 +36,7 @@ def create_place(place: PlaceCreate, db: Session = Depends(get_db)):
         new_place = Place(
             name=place.name,
             type_id=place.type_id,
+            asset_id=place.asset_id,
             latitude=place.latitude,
             longitude=place.longitude,
             geom=func.ST_GeomFromText(
@@ -92,10 +94,11 @@ def get_place(
         )
 
     logging.debug(
-        "Place found: id=%s, name=%s, type_id=%s, latitude=%s, longitude=%s",
+        "Place found: id=%s, name=%s, type_id=%s, asset_id=%s, latitude=%s, longitude=%s",
         place.id,
         place.name,
         place.type_id,
+        place.asset_id,
         place.latitude,
         place.longitude,
     )
@@ -104,6 +107,7 @@ def get_place(
         id=place.id,
         name=place.name,
         type_id=place.type_id,
+        asset_id=place.asset_id,
         latitude=place.latitude,
         longitude=place.longitude,
     )
@@ -175,10 +179,11 @@ def update_place(
     """Update an existing place by its ID."""
 
     logging.debug(
-        "Updating place: id=%s, name=%s, type_id=%s, latitude=%s, longitude=%s",
+        "Updating place: id=%s, name=%s, type_id=%s, asset_id=%s, latitude=%s, longitude=%s",
         place_id,
         place.name,
         place.type_id,
+        place.asset_id,
         place.latitude,
         place.longitude,
     )
@@ -203,6 +208,7 @@ def update_place(
     try:
         existing_place.name = place.name
         existing_place.type_id = place.type_id
+        existing_place.asset_id = place.asset_id
         existing_place.latitude = place.latitude
         existing_place.longitude = place.longitude
         existing_place.geom = func.ST_GeomFromText(

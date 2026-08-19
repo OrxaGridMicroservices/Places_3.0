@@ -1,9 +1,10 @@
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
 class PlaceCreate(BaseModel):
     """Request model for creating a new place."""
-    
+
     name: str = Field(
         ...,
         description="Name of the place",
@@ -13,6 +14,11 @@ class PlaceCreate(BaseModel):
         ...,
         description="UUID of the place type",
         examples=["00589010-cb58-11f0-ba61-e18b1d833212"]
+    )
+    asset_id: Optional[str] = Field(
+        default=None,
+        description="Cross-referenced ID of the corresponding asset in the assets service",
+        examples=["00589010-cb58-11f0-ba61-e18b1d833213"]
     )
     latitude: float = Field(
         ...,

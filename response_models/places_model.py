@@ -20,6 +20,11 @@ class PlaceResponse(BaseModel):
         description="UUID of the place type",
         examples=["00589010-cb58-11f0-ba61-e18b1d833212"]
     )
+    asset_id: Optional[str] = Field(
+        default=None,
+        description="Cross-referenced ID of the corresponding asset in the assets service",
+        examples=["00589010-cb58-11f0-ba61-e18b1d833213"]
+    )
     latitude: float = Field(
         ...,
         description="Latitude coordinate (WGS84)",
@@ -30,11 +35,6 @@ class PlaceResponse(BaseModel):
         description="Longitude coordinate (WGS84)",
         examples=[70.5678, -74.0060, 2.2922]
     )
-
-    @field_validator("id", "type_id", mode="before")
-    @classmethod
-    def _stringify_id(cls, value):
-        return str(value) if value is not None else value
 
 
 class PlaceListResponse(BaseModel):
@@ -48,11 +48,6 @@ class PlaceListResponse(BaseModel):
         description="Name of the place",
         examples=["MP", "Central Park", "Eiffel Tower"]
     )
-
-    @field_validator("id", mode="before")
-    @classmethod
-    def _stringify_id(cls, value):
-        return str(value)
 
 class PlaceDeleteResponse(BaseModel):
     """Response model for place deletion."""
