@@ -7,7 +7,7 @@ from sqlalchemy import func
 from database import get_db
 from models import Place
 from request_models.places_model import PlaceCreate
-from response_models.places_model import PlaceDescendantItem, PlaceDescendantsResponse, PlaceResponse, PlaceListResponse, PlaceDeleteResponse
+from response_models.places_model import PlaceResponse, PlaceListResponse, PlaceDeleteResponse
 
 router = APIRouter(prefix="/places", tags=["places"])
 
@@ -24,10 +24,9 @@ def create_place(place: PlaceCreate, db: Session = Depends(get_db)):
     The endpoint accepts latitude and longitude and creates a PostGIS geometry point.
     """
     logging.debug(
-        "Creating place: name=%s, type_id=%s, parent_id=%s, latitude=%s, longitude=%s",
+        "Creating place: name=%s, type_id=%s, latitude=%s, longitude=%s",
         place.name,
         place.type_id,
-        place.parent_id,
         place.latitude,
         place.longitude,
     )
@@ -36,7 +35,6 @@ def create_place(place: PlaceCreate, db: Session = Depends(get_db)):
         new_place = Place(
             name=place.name,
             type_id=place.type_id,
-            parent_id=place.parent_id,
             latitude=place.latitude,
             longitude=place.longitude,
             geom=func.ST_GeomFromText(
@@ -94,11 +92,10 @@ def get_place(
         )
 
     logging.debug(
-        "Place found: id=%s, name=%s, type_id=%s, parent_id=%s, latitude=%s, longitude=%s",
+        "Place found: id=%s, name=%s, type_id=%s, latitude=%s, longitude=%s",
         place.id,
         place.name,
         place.type_id,
-        place.parent_id,
         place.latitude,
         place.longitude,
     )
@@ -107,7 +104,6 @@ def get_place(
         id=place.id,
         name=place.name,
         type_id=place.type_id,
-        parent_id=place.parent_id,
         latitude=place.latitude,
         longitude=place.longitude,
     )
@@ -179,11 +175,10 @@ def update_place(
     """Update an existing place by its ID."""
 
     logging.debug(
-        "Updating place: id=%s, name=%s, type_id=%s, parent_id=%s, latitude=%s, longitude=%s",
+        "Updating place: id=%s, name=%s, type_id=%s, latitude=%s, longitude=%s",
         place_id,
         place.name,
         place.type_id,
-        place.parent_id,
         place.latitude,
         place.longitude,
     )
@@ -208,7 +203,6 @@ def update_place(
     try:
         existing_place.name = place.name
         existing_place.type_id = place.type_id
-        existing_place.parent_id = place.parent_id
         existing_place.latitude = place.latitude
         existing_place.longitude = place.longitude
         existing_place.geom = func.ST_GeomFromText(
@@ -267,97 +261,3 @@ def delete_place(
         db.close()
 
     return PlaceDeleteResponse(id=place_id)
-
-
-@router.get(
-    "/descendants/{place_id}",
-    response_model=PlaceDescendantsResponse,
-    tags=["places"],
-    summary="Get Place descendants by ID",
-)
-def get_place_descendants(
-    place_id: str,
-    db: Session = Depends(get_db),
-    page: int = Query(0, ge=0, description="Page number"),
-    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
-):
-    """
-    Get all descendants of a place.
-    """
-
-    logging.debug(
-        "Fetching descendants for place_id=%s, page=%s, page_size=%s",
-        place_id,
-        page,
-        page_size,
-    )
-
-    try:
-        descendants = []
-        visited = {str(place_id)}
-
-        def get_children(parent_id: str):
-            children = (
-                db.query(Place)
-                .filter(Place.parent_id == parent_id)
-                .all()
-            )
-
-            for child in children:
-
-                child_id = str(child.id)
-
-                if child_id in visited:
-                    continue
-
-                visited.add(child_id)
-
-                descendants.append(
-                    PlaceDescendantItem(
-                        id=child_id,
-                        name=child.name,
-                        type_id=str(child.type_id),
-                        parent_id=(
-                            str(child.parent_id)
-                            if child.parent_id
-                            else None
-                        ),
-                    )
-                )
-
-                # Find descendants of this child
-                get_children(child_id)
-
-        # Start recursive traversal
-        get_children(str(place_id))
-
-        logging.debug(
-            "Found %s descendants for place_id=%s",
-            len(descendants),
-            place_id,
-        )
-
-        start = page * page_size
-        end = start + page_size
-        paginated_descendants = descendants[start:end]
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        logging.error(
-            "Error fetching descendants: %s",
-            str(e),
-        )
-
-        raise HTTPException(
-            status_code=400,
-            detail=str(e),
-        )
-
-    finally:
-        db.close()
-
-    return {
-                "descendants": paginated_descendants
-            }
-    

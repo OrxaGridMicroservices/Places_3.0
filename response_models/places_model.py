@@ -20,11 +20,6 @@ class PlaceResponse(BaseModel):
         description="UUID of the place type",
         examples=["00589010-cb58-11f0-ba61-e18b1d833212"]
     )
-    parent_id: Optional[str] = Field(
-        None,
-        description="UUID of the parent place (for hierarchical places)",
-        examples=["014e3ab0-cb58-11f0-ba61-e18b1d833212"]
-    )
     latitude: float = Field(
         ...,
         description="Latitude coordinate (WGS84)",
@@ -36,7 +31,7 @@ class PlaceResponse(BaseModel):
         examples=[70.5678, -74.0060, 2.2922]
     )
 
-    @field_validator("id", "type_id", "parent_id", mode="before")
+    @field_validator("id", "type_id", mode="before")
     @classmethod
     def _stringify_id(cls, value):
         return str(value) if value is not None else value
@@ -67,35 +62,3 @@ class PlaceDeleteResponse(BaseModel):
         description="Result message of the delete operation",
         examples=["550e8400-e29b-41d4-a716-446655440000"]
     )
-
-
-class PlaceDescendantItem(BaseModel):
-    id: str = Field(
-            ...,
-            description="Unique identifier of the place",
-            examples=["550e8400-e29b-41d4-a716-446655440000"]
-    )
-    name: str = Field(
-            ...,
-            description="Name of the place",
-            examples=["India"]
-    )
-    type_id: str = Field(
-            ...,
-            description="UUID of the place type",
-            examples=["00589010-cb58-11f0-ba61-e18b1d833212"]
-    )
-    parent_id: Optional[str] = Field(
-            None,
-            description="UUID of the parent place (for hierarchical places)",
-            examples=["014e3ab0-cb58-11f0-ba61-e18b1d833212"]
-    )
-
-    @field_validator("id", "type_id", "parent_id", mode="before")
-    @classmethod
-    def _stringify_id(cls, value):
-        return str(value) if value is not None else value
-
-
-class PlaceDescendantsResponse(BaseModel):
-    descendants: List[PlaceDescendantItem]

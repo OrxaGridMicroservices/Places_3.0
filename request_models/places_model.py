@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class PlaceCreate(BaseModel):
@@ -14,11 +13,6 @@ class PlaceCreate(BaseModel):
         ...,
         description="UUID of the place type",
         examples=["00589010-cb58-11f0-ba61-e18b1d833212"]
-    )
-    parent_id: Optional[str] = Field(
-        None,
-        description="UUID of the parent place (for hierarchical places)",
-        examples=["014e3ab0-cb58-11f0-ba61-e18b1d833212"]
     )
     latitude: float = Field(
         ...,
