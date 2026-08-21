@@ -37,8 +37,6 @@ def create_place(place: PlaceCreate, db: Session = Depends(get_db)):
             name=place.name,
             type_id=place.type_id,
             asset_id=place.asset_id,
-            latitude=place.latitude,
-            longitude=place.longitude,
             geom=func.ST_GeomFromText(
                 f"POINT({place.longitude} {place.latitude})", 4326
             ),
@@ -209,8 +207,6 @@ def update_place(
         existing_place.name = place.name
         existing_place.type_id = place.type_id
         existing_place.asset_id = place.asset_id
-        existing_place.latitude = place.latitude
-        existing_place.longitude = place.longitude
         existing_place.geom = func.ST_GeomFromText(
             f"POINT({place.longitude} {place.latitude})", 4326
         )
