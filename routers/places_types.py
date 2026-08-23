@@ -24,23 +24,34 @@ DEFAULT_PLACE_TYPES = [
 
 
 def seed_default_place_types(db: Session):
-    """Seed default place types (Country, State, City, asset) if the table is empty."""
+    """Seed default place types."""
 
-    table_has_data = db.scalar(select(PlaceType.id).limit(1)) is not None  # any existing row means already seeded
+    table_has_data = db.scalar(
+        select(PlaceType.id).limit(1)
+    ) is not None  # Check if data exists
 
     if table_has_data:
         return
 
-    db.execute(insert(PlaceType), DEFAULT_PLACE_TYPES)  # bulk insert all defaults in one statement
-    db.commit()
+    db.execute(
+        insert(PlaceType),
+        DEFAULT_PLACE_TYPES,
+    )  # Insert default types
+
+    db.commit()  # Save the insert
 
 
-@router.post("",
-             response_model=PlaceTypeResponse,
-             tags=["place/types"],
-             summary="Create Place Type")
-def create_place_type(place_type: PlaceTypeCreate, db: Session = Depends(get_db)):
-    """Create a new place type in the database."""
+@router.post(
+    "",
+    response_model=PlaceTypeResponse,
+    tags=["place/types"],
+    summary="Create Place Type",
+)
+def create_place_type(
+    place_type: PlaceTypeCreate,
+    db: Session = Depends(get_db),
+):
+    """Create a new place type."""
 
     logging.debug(
         "Creating place type: name=%s",
@@ -50,23 +61,44 @@ def create_place_type(place_type: PlaceTypeCreate, db: Session = Depends(get_db)
     try:
         stmt = (
             insert(PlaceType)
-            .values(name=place_type.name)
-            .returning(PlaceType)  # get the inserted row back without a second SELECT
+            .values(
+                name=place_type.name,
+            )
+            .returning(PlaceType)  # Return the inserted PlaceType
         )
-        new_place_type = db.execute(stmt).scalar_one()  # exactly one row is expected back from the insert
 
-        db.commit()  # persist the insert
+        new_place_type = db.execute(
+            stmt
+        ).scalar_one()  # Get the inserted PlaceType
 
-        logging.info(f"Place type created successfully: {new_place_type.id}")
-        logging.debug(f"Place type created: {new_place_type}")
+        db.commit()  # Save the insert
+
+        logging.info(
+            f"Place type created successfully: {new_place_type.id}"
+        )
+        logging.debug(
+            f"Place type created: {new_place_type}"
+        )
+
     except Exception as e:
-        db.rollback()  # undo the failed transaction
-        logging.error(f"Error creating place type: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        db.rollback()  # Undo the insert
+
+        logging.error(
+            f"Error creating place type: {str(e)}"
+        )
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
     finally:
         db.close()
 
-    return PlaceTypeResponse(id=place_type.id, name=place_type.name)
+    return PlaceTypeResponse(
+        id=place_type.id,
+        name=place_type.name,
+    )
 
 
 @router.get(
@@ -81,20 +113,37 @@ def get_place_type(
 ):
     """Get a place type by its ID."""
 
-    logging.debug("Fetching place type by id: %s", id)
+    logging.debug(
+        "Fetching place type by id: %s",
+        id,
+    )
 
     try:
         place_type = db.scalar(
-            select(PlaceType).where(PlaceType.id == id)  # look up a single place type by primary key
+            select(PlaceType).where(
+                PlaceType.id == id
+            )  # Find place type by ID
         )
+
     except Exception as e:
-        logging.error(f"Error fetching place type: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        logging.error(
+            f"Error fetching place type: {str(e)}"
+        )
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
     finally:
         db.close()
 
     if place_type is None:
-        logging.debug("Place type not found: id=%s", id)
+        logging.debug(
+            "Place type not found: id=%s",
+            id,
+        )
+
         raise HTTPException(
             status_code=404,
             detail="Place type not found",
@@ -106,18 +155,35 @@ def get_place_type(
         place_type.name,
     )
 
-    return PlaceTypeResponse(id=place_type.id, name=place_type.name)
+    return PlaceTypeResponse(
+        id=place_type.id,
+        name=place_type.name,
+    )
 
 
-@router.get("",
-            response_model=list[PlaceTypeListResponse],
-            tags=["place/types"],
-            summary="Get List Of Place Types")
+@router.get(
+    "",
+    response_model=list[PlaceTypeListResponse],
+    tags=["place/types"],
+    summary="Get List Of Place Types",
+)
 def get_all_place_types(
     db: Session = Depends(get_db),
-    page: int = Query(0, ge=0, description="Page number"),
-    page_size: int = Query(10, ge=1, le=100, description="Number of items per page"),
-    name: Optional[str] = Query(default=None, description="The case insensitive 'substring' filter"),
+    page: int = Query(
+        0,
+        ge=0,
+        description="Page number",
+    ),
+    page_size: int = Query(
+        10,
+        ge=1,
+        le=100,
+        description="Number of items per page",
+    ),
+    name: Optional[str] = Query(
+        default=None,
+        description="The case insensitive 'substring' filter",
+    ),
 ):
     """Get all place types."""
 
@@ -129,21 +195,42 @@ def get_all_place_types(
     )
 
     try:
-        stmt = select(PlaceType)  # base query over all place types
+        stmt = select(PlaceType)  # Select all place types
 
         if name is not None:
-            stmt = stmt.where(PlaceType.name.ilike(f"%{name}%"))  # case-insensitive substring match on name
+            stmt = stmt.where(
+                PlaceType.name.ilike(
+                    f"%{name}%"
+                )  # Filter by name
+            )
 
-        stmt = stmt.offset(page * page_size).limit(page_size)  # apply pagination
+        stmt = (
+            stmt
+            .offset(page * page_size)  # Skip previous pages
+            .limit(page_size)  # Limit results
+        )
 
-        place_types = db.scalars(stmt).all()  # run the query and unwrap the PlaceType rows
+        place_types = db.scalars(
+            stmt
+        ).all()  # Get all PlaceType objects
+
     except Exception as e:
-        logging.error(f"Error fetching place types: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        logging.error(
+            f"Error fetching place types: {str(e)}"
+        )
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
     finally:
         db.close()
 
-    logging.debug("Place types found: count=%s", len(place_types))
+    logging.debug(
+        "Place types found: count=%s",
+        len(place_types),
+    )
 
     return [
         PlaceTypeListResponse(
@@ -165,7 +252,7 @@ def update_place_type(
     place_type: PlaceTypeCreate,
     db: Session = Depends(get_db),
 ):
-    """Update an existing place type by its ID."""
+    """Update a place type by its ID."""
 
     logging.debug(
         "Updating place type: id=%s, name=%s",
@@ -177,34 +264,60 @@ def update_place_type(
         stmt = (
             update(PlaceType)
             .where(PlaceType.id == id)
-            .values(name=place_type.name)
-            .returning(PlaceType)  # get the updated row back without a second SELECT
+            .values(
+                name=place_type.name,
+            )
+            .returning(PlaceType)  # Return the updated PlaceType
         )
-        updated_place_type = db.execute(stmt).scalar_one_or_none()  # None means no row matched id
+
+        updated_place_type = db.execute(
+            stmt
+        ).scalar_one_or_none()  # Get the updated PlaceType
 
         if updated_place_type is None:
             db.rollback()
 
-            logging.debug("Place type not found: id=%s", id)
+            logging.debug(
+                "Place type not found: id=%s",
+                id,
+            )
+
             raise HTTPException(
                 status_code=404,
                 detail="Place type not found",
             )
 
-        db.commit()  # persist the update
+        db.commit()  # Save the update
 
-        logging.info(f"Place type updated successfully: {updated_place_type.id}")
-        logging.debug(f"Place type updated: {updated_place_type}")
+        logging.info(
+            f"Place type updated successfully: {updated_place_type.id}"
+        )
+        logging.debug(
+            f"Place type updated: {updated_place_type}"
+        )
+
     except HTTPException:
         raise
+
     except Exception as e:
-        db.rollback()  # undo the failed transaction
-        logging.error(f"Error updating place type: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        db.rollback()  # Undo the update
+
+        logging.error(
+            f"Error updating place type: {str(e)}"
+        )
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
     finally:
         db.close()
 
-    return PlaceTypeResponse(id=place_type.id, name=place_type.name)
+    return PlaceTypeResponse(
+        id=place_type.id,
+        name=place_type.name,
+    )
 
 
 @router.delete(
@@ -219,35 +332,61 @@ def delete_place_type(
 ):
     """Delete a place type by its ID."""
 
-    logging.debug("Deleting place type: id=%s", id)
+    logging.debug(
+        "Deleting place type: id=%s",
+        id,
+    )
 
     try:
         stmt = (
             delete(PlaceType)
             .where(PlaceType.id == id)
-            .returning(PlaceType.id)  # confirm which row (if any) was deleted
+            .returning(
+                PlaceType.id
+            )  # Return the deleted ID
         )
-        deleted_id = db.execute(stmt).scalar_one_or_none()  # None means no row matched id
+
+        deleted_id = db.execute(
+            stmt
+        ).scalar_one_or_none()  # Get the deleted ID
 
         if deleted_id is None:
             db.rollback()
 
-            logging.debug("Place type not found: id=%s", id)
+            logging.debug(
+                "Place type not found: id=%s",
+                id,
+            )
+
             raise HTTPException(
                 status_code=404,
                 detail="Place type not found",
             )
 
-        db.commit()  # persist the delete
+        db.commit()  # Save the delete
 
-        logging.info(f"Place type deleted successfully: {deleted_id}")
+        logging.info(
+            f"Place type deleted successfully: {deleted_id}"
+        )
+
     except HTTPException:
         raise
+
     except Exception as e:
-        db.rollback()  # undo the failed transaction
-        logging.error(f"Error deleting place type: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        db.rollback()  # Undo the delete
+
+        logging.error(
+            f"Error deleting place type: {str(e)}"
+        )
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        )
+
     finally:
         db.close()
 
-    return PlaceTypeDeleteResponse(id=deleted_id)
+    return PlaceTypeDeleteResponse(
+        id=deleted_id,
+    )

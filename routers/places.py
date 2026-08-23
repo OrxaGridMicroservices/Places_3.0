@@ -39,10 +39,10 @@ def create_place(
                 name=place.name,
                 type_id=place.type_id,
                 asset_id=place.asset_id,
-                geom=func.ST_GeomFromText(  # build a PostGIS point from the request's WKT geometry
+                geom=func.ST_GeomFromText(
                     place.geometry,
                     4326,
-                ),
+                ),  # Convert WKT to geometry
             )
             .returning(Place)  # Return the inserted Place
         )
@@ -51,10 +51,10 @@ def create_place(
         new_place = result.scalar_one()  # Get the inserted Place
         logging.debug(f'{new_place=}')
 
-        db.commit()  # persist the insert
+        db.commit()  # Save the insert
 
     except Exception as e:
-        db.rollback()  # undo the failed transaction
+        db.rollback()  # Undo the insert
 
         raise HTTPException(
             status_code=400,
@@ -62,13 +62,13 @@ def create_place(
         )
 
     return PlaceResponse(
-            id=place.id,
-            name=place.name,
-            type_id=place.type_id,
-            asset_id=place.asset_id,
-            latitude=place.latitude,
-            longitude=place.longitude,
-        )
+        id=place.id,
+        name=place.name,
+        type_id=place.type_id,
+        asset_id=place.asset_id,
+        latitude=place.latitude,
+        longitude=place.longitude,
+    )
 
 
 @router.get(
@@ -100,7 +100,7 @@ def get_all_places(
 ):
     """Get paginated list of places."""
 
-    stmt = select(Place)  # base query over all places
+    stmt = select(Place)  # Select all places
 
     if type_id is not None:
         stmt = stmt.where(
@@ -109,21 +109,24 @@ def get_all_places(
 
     if name is not None:
         stmt = stmt.where(
-            Place.name.ilike(f"%{name}%")  # case-insensitive substring match on name
+            Place.name.ilike(f"%{name}%")  # Filter by name
         )
 
     stmt = (
         stmt
-        .offset(page * page_size)  
-        .limit(page_size)
+        .offset(page * page_size)  # Skip previous pages
+        .limit(page_size)  # Limit the results
     )
 
     try:
-        places = db.scalars(stmt).all()  # run the query and unwrap the Place rows
+        places = db.scalars(stmt).all()  # Get all Place objects
         logging.debug(f'{places=}')
 
         response = [
-            PlaceListResponse(id=place.id, name=place.name)  # trim each row to id/name only
+            PlaceListResponse(
+                id=place.id,
+                name=place.name,
+            )  # Return only id and name
             for place in places
         ]
 
@@ -151,10 +154,10 @@ def get_place(
     try:
         stmt = (
             select(Place)
-            .where(Place.id == place_id)  # look up a single place by primary key
+            .where(Place.id == place_id)  # Find place by ID
         )
 
-        place = db.scalar(stmt)  # returns the Place row, or None if not found
+        place = db.scalar(stmt)  # Get the Place or None
         logging.debug(f'{place=}')
 
     except Exception as e:
@@ -171,13 +174,13 @@ def get_place(
         )
 
     return PlaceResponse(
-            id=place.id,
-            name=place.name,
-            type_id=place.type_id,
-            asset_id=place.asset_id,
-            latitude=place.latitude,
-            longitude=place.longitude,
-        )
+        id=place.id,
+        name=place.name,
+        type_id=place.type_id,
+        asset_id=place.asset_id,
+        latitude=place.latitude,
+        longitude=place.longitude,
+    )
 
 
 @router.put(
@@ -201,17 +204,17 @@ def update_place(
                 name=place.name,
                 type_id=place.type_id,
                 asset_id=place.asset_id,
-                geom=func.ST_GeomFromText(  # rebuild the PostGIS point from the new WKT geometry
+                geom=func.ST_GeomFromText(
                     place.geometry,
                     4326,
-                ),
+                ),  # Convert WKT to geometry
             )
-            .returning(Place)  # get the updated row back without a second SELECT
+            .returning(Place)  # Return the updated Place
         )
 
         result = db.execute(stmt)
 
-        updated_place = result.scalar_one_or_none()  # None means no row matched place_id
+        updated_place = result.scalar_one_or_none()  # Get the updated Place
         logging.debug(f'{updated_place=}')
 
         if updated_place is None:
@@ -222,13 +225,13 @@ def update_place(
                 detail="Place not found",
             )
 
-        db.commit()  # persist the update
+        db.commit()  # Save the update
 
     except HTTPException:
         raise
 
     except Exception as e:
-        db.rollback()  # undo the failed transaction
+        db.rollback()  # Undo the update
 
         raise HTTPException(
             status_code=400,
@@ -236,13 +239,13 @@ def update_place(
         )
 
     return PlaceResponse(
-            id=place.id,
-            name=place.name,
-            type_id=place.type_id,
-            asset_id=place.asset_id,
-            latitude=place.latitude,
-            longitude=place.longitude,
-        )
+        id=place.id,
+        name=place.name,
+        type_id=place.type_id,
+        asset_id=place.asset_id,
+        latitude=place.latitude,
+        longitude=place.longitude,
+    )
 
 
 @router.delete(
@@ -259,12 +262,12 @@ def delete_place(
         stmt = (
             delete(Place)
             .where(Place.id == place_id)
-            .returning(Place.id)  # confirm which row (if any) was deleted
+            .returning(Place.id)  # Return the deleted ID
         )
 
         result = db.execute(stmt)
 
-        deleted_id = result.scalar_one_or_none()  # None means no row matched place_id
+        deleted_id = result.scalar_one_or_none()  # Get the deleted ID
 
         if deleted_id is None:
             db.rollback()
@@ -274,13 +277,13 @@ def delete_place(
                 detail="Place not found",
             )
 
-        db.commit()  # persist the delete
+        db.commit()  # Save the delete
 
     except HTTPException:
         raise
 
     except Exception as e:
-        db.rollback()  # undo the failed transaction
+        db.rollback()  # Undo the delete
 
         raise HTTPException(
             status_code=400,
