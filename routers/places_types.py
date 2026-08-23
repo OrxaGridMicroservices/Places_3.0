@@ -22,15 +22,16 @@ DEFAULT_PLACE_TYPES = [
     {"name": "asset"},
 ]
 
+
 def seed_default_place_types(db: Session):
     """Seed default place types (Country, State, City, asset) if the table is empty."""
 
-    table_has_data = db.scalar(select(PlaceType.id).limit(1)) is not None
+    table_has_data = db.scalar(select(PlaceType.id).limit(1)) is not None  # any existing row means already seeded
 
     if table_has_data:
         return
 
-    db.execute(insert(PlaceType), DEFAULT_PLACE_TYPES)
+    db.execute(insert(PlaceType), DEFAULT_PLACE_TYPES)  # bulk insert all defaults in one statement
     db.commit()
 
 
@@ -50,22 +51,22 @@ def create_place_type(place_type: PlaceTypeCreate, db: Session = Depends(get_db)
         stmt = (
             insert(PlaceType)
             .values(name=place_type.name)
-            .returning(PlaceType)
+            .returning(PlaceType)  # get the inserted row back without a second SELECT
         )
-        new_place_type = db.execute(stmt).scalar_one()
+        new_place_type = db.execute(stmt).scalar_one()  # exactly one row is expected back from the insert
 
-        db.commit()
+        db.commit()  # persist the insert
 
         logging.info(f"Place type created successfully: {new_place_type.id}")
         logging.debug(f"Place type created: {new_place_type}")
     except Exception as e:
-        db.rollback()
+        db.rollback()  # undo the failed transaction
         logging.error(f"Error creating place type: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     finally:
         db.close()
 
-    return new_place_type
+    return PlaceTypeResponse(id=place_type.id, name=place_type.name)
 
 
 @router.get(
@@ -84,7 +85,7 @@ def get_place_type(
 
     try:
         place_type = db.scalar(
-            select(PlaceType).where(PlaceType.id == id)
+            select(PlaceType).where(PlaceType.id == id)  # look up a single place type by primary key
         )
     except Exception as e:
         logging.error(f"Error fetching place type: {str(e)}")
@@ -105,10 +106,7 @@ def get_place_type(
         place_type.name,
     )
 
-    return PlaceTypeResponse(
-        id=place_type.id,
-        name=place_type.name,
-    )
+    return PlaceTypeResponse(id=place_type.id, name=place_type.name)
 
 
 @router.get("",
@@ -131,14 +129,14 @@ def get_all_place_types(
     )
 
     try:
-        stmt = select(PlaceType)
+        stmt = select(PlaceType)  # base query over all place types
 
         if name is not None:
-            stmt = stmt.where(PlaceType.name.ilike(f"%{name}%"))
+            stmt = stmt.where(PlaceType.name.ilike(f"%{name}%"))  # case-insensitive substring match on name
 
-        stmt = stmt.offset(page * page_size).limit(page_size)
+        stmt = stmt.offset(page * page_size).limit(page_size)  # apply pagination
 
-        place_types = db.scalars(stmt).all()
+        place_types = db.scalars(stmt).all()  # run the query and unwrap the PlaceType rows
     except Exception as e:
         logging.error(f"Error fetching place types: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -180,9 +178,9 @@ def update_place_type(
             update(PlaceType)
             .where(PlaceType.id == id)
             .values(name=place_type.name)
-            .returning(PlaceType)
+            .returning(PlaceType)  # get the updated row back without a second SELECT
         )
-        updated_place_type = db.execute(stmt).scalar_one_or_none()
+        updated_place_type = db.execute(stmt).scalar_one_or_none()  # None means no row matched id
 
         if updated_place_type is None:
             db.rollback()
@@ -193,20 +191,20 @@ def update_place_type(
                 detail="Place type not found",
             )
 
-        db.commit()
+        db.commit()  # persist the update
 
         logging.info(f"Place type updated successfully: {updated_place_type.id}")
         logging.debug(f"Place type updated: {updated_place_type}")
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
+        db.rollback()  # undo the failed transaction
         logging.error(f"Error updating place type: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     finally:
         db.close()
 
-    return updated_place_type
+    return PlaceTypeResponse(id=place_type.id, name=place_type.name)
 
 
 @router.delete(
@@ -227,9 +225,9 @@ def delete_place_type(
         stmt = (
             delete(PlaceType)
             .where(PlaceType.id == id)
-            .returning(PlaceType.id)
+            .returning(PlaceType.id)  # confirm which row (if any) was deleted
         )
-        deleted_id = db.execute(stmt).scalar_one_or_none()
+        deleted_id = db.execute(stmt).scalar_one_or_none()  # None means no row matched id
 
         if deleted_id is None:
             db.rollback()
@@ -240,13 +238,13 @@ def delete_place_type(
                 detail="Place type not found",
             )
 
-        db.commit()
+        db.commit()  # persist the delete
 
         logging.info(f"Place type deleted successfully: {deleted_id}")
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
+        db.rollback()  # undo the failed transaction
         logging.error(f"Error deleting place type: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     finally:

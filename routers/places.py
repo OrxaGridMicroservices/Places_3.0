@@ -39,34 +39,37 @@ def create_place(
                 name=place.name,
                 type_id=place.type_id,
                 asset_id=place.asset_id,
-                geom=func.ST_GeomFromText(
+                geom=func.ST_GeomFromText(  # build a PostGIS point from the request's WKT geometry
                     place.geometry,
                     4326,
                 ),
             )
-            .returning(Place) # add in comments returring featire works
+            .returning(Place)  # Return the inserted Place
         )
         result = db.execute(stmt)
 
-        new_place = result.scalar_one()  # add commentfor scalar_one()
+        new_place = result.scalar_one()  # Get the inserted Place
         logging.debug(f'{new_place=}')
 
-        db.commit()
-
-        logging.info(
-            "Place created successfully: id=%s",
-            new_place.id,
-        )
+        db.commit()  # persist the insert
 
     except Exception as e:
-        db.rollback()
+        db.rollback()  # undo the failed transaction
 
         raise HTTPException(
             status_code=400,
             detail=str(e),
         )
-    
-    return new_place  # return with responces model
+
+    return PlaceResponse(
+            id=place.id,
+            name=place.name,
+            type_id=place.type_id,
+            asset_id=place.asset_id,
+            latitude=place.latitude,
+            longitude=place.longitude,
+        )
+
 
 @router.get(
     "",
@@ -97,7 +100,7 @@ def get_all_places(
 ):
     """Get paginated list of places."""
 
-    stmt = select(Place)
+    stmt = select(Place)  # base query over all places
 
     if type_id is not None:
         stmt = stmt.where(
@@ -106,21 +109,21 @@ def get_all_places(
 
     if name is not None:
         stmt = stmt.where(
-            Place.name.ilike(f"%{name}%")
+            Place.name.ilike(f"%{name}%")  # case-insensitive substring match on name
         )
 
     stmt = (
         stmt
-        .offset(page * page_size)
+        .offset(page * page_size)  
         .limit(page_size)
     )
 
     try:
-        places = db.scalars(stmt).all()
+        places = db.scalars(stmt).all()  # run the query and unwrap the Place rows
         logging.debug(f'{places=}')
 
         response = [
-            PlaceListResponse(id=place.id, name=place.name)
+            PlaceListResponse(id=place.id, name=place.name)  # trim each row to id/name only
             for place in places
         ]
 
@@ -148,14 +151,14 @@ def get_place(
     try:
         stmt = (
             select(Place)
-            .where(Place.id == place_id)
+            .where(Place.id == place_id)  # look up a single place by primary key
         )
 
-        place = db.scalar(stmt)
+        place = db.scalar(stmt)  # returns the Place row, or None if not found
         logging.debug(f'{place=}')
 
     except Exception as e:
-    
+
         raise HTTPException(
             status_code=400,
             detail=str(e),
@@ -167,7 +170,14 @@ def get_place(
             detail="Place not found",
         )
 
-    return place
+    return PlaceResponse(
+            id=place.id,
+            name=place.name,
+            type_id=place.type_id,
+            asset_id=place.asset_id,
+            latitude=place.latitude,
+            longitude=place.longitude,
+        )
 
 
 @router.put(
@@ -191,17 +201,17 @@ def update_place(
                 name=place.name,
                 type_id=place.type_id,
                 asset_id=place.asset_id,
-                geom=func.ST_GeomFromText(
+                geom=func.ST_GeomFromText(  # rebuild the PostGIS point from the new WKT geometry
                     place.geometry,
                     4326,
                 ),
             )
-            .returning(Place)
+            .returning(Place)  # get the updated row back without a second SELECT
         )
 
         result = db.execute(stmt)
 
-        updated_place = result.scalar_one_or_none()
+        updated_place = result.scalar_one_or_none()  # None means no row matched place_id
         logging.debug(f'{updated_place=}')
 
         if updated_place is None:
@@ -212,20 +222,27 @@ def update_place(
                 detail="Place not found",
             )
 
-        db.commit()
+        db.commit()  # persist the update
 
     except HTTPException:
         raise
 
     except Exception as e:
-        db.rollback()
+        db.rollback()  # undo the failed transaction
 
         raise HTTPException(
             status_code=400,
             detail=str(e),
         )
-    
-    return updated_place
+
+    return PlaceResponse(
+            id=place.id,
+            name=place.name,
+            type_id=place.type_id,
+            asset_id=place.asset_id,
+            latitude=place.latitude,
+            longitude=place.longitude,
+        )
 
 
 @router.delete(
@@ -242,12 +259,12 @@ def delete_place(
         stmt = (
             delete(Place)
             .where(Place.id == place_id)
-            .returning(Place.id)
+            .returning(Place.id)  # confirm which row (if any) was deleted
         )
 
         result = db.execute(stmt)
 
-        deleted_id = result.scalar_one_or_none()
+        deleted_id = result.scalar_one_or_none()  # None means no row matched place_id
 
         if deleted_id is None:
             db.rollback()
@@ -257,13 +274,13 @@ def delete_place(
                 detail="Place not found",
             )
 
-        db.commit()
+        db.commit()  # persist the delete
 
     except HTTPException:
         raise
 
     except Exception as e:
-        db.rollback()
+        db.rollback()  # undo the failed transaction
 
         raise HTTPException(
             status_code=400,
@@ -271,5 +288,5 @@ def delete_place(
         )
 
     return PlaceDeleteResponse(
-                id=deleted_id,
-            )
+        id=deleted_id,
+    )
