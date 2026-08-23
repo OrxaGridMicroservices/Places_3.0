@@ -1,6 +1,7 @@
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -22,18 +23,14 @@ DEFAULT_PLACE_TYPES = [
 ]
 
 def seed_default_place_types(db: Session):
-    """Seed default place types (Country, State, City, asset) if they don't already exist."""
+    """Seed default place types (Country, State, City, asset) if the table is empty."""
 
-    for default_type in DEFAULT_PLACE_TYPES:
-        existing = (
-            db.query(PlaceType)
-            .filter(PlaceType.name == default_type["name"])
-            .first()
-        )
+    table_has_data = db.scalar(select(PlaceType.id).limit(1)) is not None
 
-        if existing is None:
-            db.add(PlaceType(name=default_type["name"],))
+    if table_has_data:
+        return
 
+    db.execute(insert(PlaceType), DEFAULT_PLACE_TYPES)
     db.commit()
 
 
@@ -50,12 +47,14 @@ def create_place_type(place_type: PlaceTypeCreate, db: Session = Depends(get_db)
     )
 
     try:
-        new_place_type = PlaceType(
-            name=place_type.name,
+        stmt = (
+            insert(PlaceType)
+            .values(name=place_type.name)
+            .returning(PlaceType)
         )
-        db.add(new_place_type)
+        new_place_type = db.execute(stmt).scalar_one()
+
         db.commit()
-        db.refresh(new_place_type)
 
         logging.info(f"Place type created successfully: {new_place_type.id}")
         logging.debug(f"Place type created: {new_place_type}")
@@ -84,10 +83,8 @@ def get_place_type(
     logging.debug("Fetching place type by id: %s", id)
 
     try:
-        place_type = (
-            db.query(PlaceType)
-            .filter(PlaceType.id == id)
-            .first()
+        place_type = db.scalar(
+            select(PlaceType).where(PlaceType.id == id)
         )
     except Exception as e:
         logging.error(f"Error fetching place type: {str(e)}")
@@ -134,17 +131,14 @@ def get_all_place_types(
     )
 
     try:
-        query = db.query(PlaceType)
+        stmt = select(PlaceType)
 
         if name is not None:
-            query = query.filter(PlaceType.name.ilike(f"%{name}%"))
+            stmt = stmt.where(PlaceType.name.ilike(f"%{name}%"))
 
-        place_types = (
-            query
-            .offset(page * page_size)
-            .limit(page_size)
-            .all()
-        )
+        stmt = stmt.offset(page * page_size).limit(page_size)
+
+        place_types = db.scalars(stmt).all()
     except Exception as e:
         logging.error(f"Error fetching place types: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -182,29 +176,29 @@ def update_place_type(
     )
 
     try:
-        existing_place_type = (
-            db.query(PlaceType)
-            .filter(PlaceType.id == id)
-            .first()
+        stmt = (
+            update(PlaceType)
+            .where(PlaceType.id == id)
+            .values(name=place_type.name)
+            .returning(PlaceType)
         )
-    except Exception as e:
-        logging.error(f"Error fetching place type: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        updated_place_type = db.execute(stmt).scalar_one_or_none()
 
-    if existing_place_type is None:
-        logging.debug("Place type not found: id=%s", id)
-        raise HTTPException(
-            status_code=404,
-            detail="Place type not found",
-        )
+        if updated_place_type is None:
+            db.rollback()
 
-    try:
-        existing_place_type.name = place_type.name
+            logging.debug("Place type not found: id=%s", id)
+            raise HTTPException(
+                status_code=404,
+                detail="Place type not found",
+            )
+
         db.commit()
-        db.refresh(existing_place_type)
 
-        logging.info(f"Place type updated successfully: {existing_place_type.id}")
-        logging.debug(f"Place type updated: {existing_place_type}")
+        logging.info(f"Place type updated successfully: {updated_place_type.id}")
+        logging.debug(f"Place type updated: {updated_place_type}")
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         logging.error(f"Error updating place type: {str(e)}")
@@ -212,7 +206,7 @@ def update_place_type(
     finally:
         db.close()
 
-    return existing_place_type
+    return updated_place_type
 
 
 @router.delete(
@@ -230,28 +224,27 @@ def delete_place_type(
     logging.debug("Deleting place type: id=%s", id)
 
     try:
-        existing_place_type = (
-            db.query(PlaceType)
-            .filter(PlaceType.id == id)
-            .first()
+        stmt = (
+            delete(PlaceType)
+            .where(PlaceType.id == id)
+            .returning(PlaceType.id)
         )
-    except Exception as e:
-        logging.error(f"Error fetching place type: {str(e)}")
-        raise HTTPException(status_code=400, detail=str(e))
+        deleted_id = db.execute(stmt).scalar_one_or_none()
 
-    if existing_place_type is None:
-        logging.debug("Place type not found: id=%s", id)
-        raise HTTPException(
-            status_code=404,
-            detail="Place type not found",
-        )
+        if deleted_id is None:
+            db.rollback()
 
-    try:
-        db.delete(existing_place_type)
+            logging.debug("Place type not found: id=%s", id)
+            raise HTTPException(
+                status_code=404,
+                detail="Place type not found",
+            )
+
         db.commit()
 
-        logging.info(f"Place type deleted successfully: {id}")
-        logging.debug(f"Place type deleted: {existing_place_type}")
+        logging.info(f"Place type deleted successfully: {deleted_id}")
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         logging.error(f"Error deleting place type: {str(e)}")
@@ -259,4 +252,4 @@ def delete_place_type(
     finally:
         db.close()
 
-    return PlaceTypeDeleteResponse(id=id)
+    return PlaceTypeDeleteResponse(id=deleted_id)

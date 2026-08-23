@@ -3,7 +3,7 @@ import time
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 POSTGRES_USER = os.getenv("POSTGRES_USER")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
@@ -34,7 +34,10 @@ SessionLocal = sessionmaker(
     bind=engine,
 )
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
+
 
 def init_db(max_retries: int = 10, retry_delay: int = 2):
     for attempt in range(max_retries):
@@ -43,7 +46,7 @@ def init_db(max_retries: int = 10, retry_delay: int = 2):
                 result = connection.execute(text("SELECT 1"))
                 print("Database connection test:", result.scalar())
 
-            Base.metadata.create_all(bind=engine)
+            Base.metadata.create_all(engine)
 
             print("Database initialized successfully")
             return True

@@ -12,7 +12,7 @@ from routers.places_types import (
 )
 
 # Create tables
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(engine)
 
 # Seed default place types (Country, State, City)
 with SessionLocal() as db:
