@@ -22,7 +22,7 @@ DEFAULT_PLACE_TYPES = [
     {"name": "asset"},
 ]
 
-
+# https://docs.sqlalchemy.org/en/20/core/connections.html#engine-insertmanyvalues
 def seed_default_place_types(db: Session):
     """Seed default place types."""
 
@@ -52,12 +52,6 @@ def create_place_type(
     db: Session = Depends(get_db),
 ):
     """Create a new place type."""
-
-    logging.debug(
-        "Creating place type: name=%s",
-        place_type.name,
-    )
-
     try:
         stmt = (
             insert(PlaceType)
@@ -73,11 +67,8 @@ def create_place_type(
 
         db.commit()  # Save the insert
 
-        logging.info(
-            f"Place type created successfully: {new_place_type.id}"
-        )
         logging.debug(
-            f"Place type created: {new_place_type}"
+            f'{new_place_type=}'
         )
 
     except Exception as e:
@@ -112,12 +103,6 @@ def get_place_type(
     db: Session = Depends(get_db),
 ):
     """Get a place type by its ID."""
-
-    logging.debug(
-        "Fetching place type by id: %s",
-        id,
-    )
-
     try:
         place_type = db.scalar(
             select(PlaceType).where(
@@ -139,10 +124,7 @@ def get_place_type(
         db.close()
 
     if place_type is None:
-        logging.debug(
-            "Place type not found: id=%s",
-            id,
-        )
+        logging.debug(f'{id=}')
 
         raise HTTPException(
             status_code=404,
@@ -150,10 +132,7 @@ def get_place_type(
         )
 
     logging.debug(
-        "Place type found: id=%s, name=%s",
-        place_type.id,
-        place_type.name,
-    )
+    f'{place_type.id=}, {place_type.name=}')
 
     return PlaceTypeResponse(
         id=place_type.id,
@@ -186,14 +165,6 @@ def get_all_place_types(
     ),
 ):
     """Get all place types."""
-
-    logging.debug(
-        "Fetching all place types: page=%s, page_size=%s, name=%s",
-        page,
-        page_size,
-        name,
-    )
-
     try:
         stmt = select(PlaceType)  # Select all place types
 
@@ -227,10 +198,7 @@ def get_all_place_types(
     finally:
         db.close()
 
-    logging.debug(
-        "Place types found: count=%s",
-        len(place_types),
-    )
+    logging.debug(f'{place_types=}')
 
     return [
         PlaceTypeListResponse(
@@ -253,13 +221,6 @@ def update_place_type(
     db: Session = Depends(get_db),
 ):
     """Update a place type by its ID."""
-
-    logging.debug(
-        "Updating place type: id=%s, name=%s",
-        id,
-        place_type.name,
-    )
-
     try:
         stmt = (
             update(PlaceType)
@@ -277,11 +238,7 @@ def update_place_type(
         if updated_place_type is None:
             db.rollback()
 
-            logging.debug(
-                "Place type not found: id=%s",
-                id,
-            )
-
+            logging.debug(f'{id=}')
             raise HTTPException(
                 status_code=404,
                 detail="Place type not found",
@@ -292,9 +249,7 @@ def update_place_type(
         logging.info(
             f"Place type updated successfully: {updated_place_type.id}"
         )
-        logging.debug(
-            f"Place type updated: {updated_place_type}"
-        )
+        logging.debug(f'{updated_place_type=}')
 
     except HTTPException:
         raise
@@ -331,12 +286,6 @@ def delete_place_type(
     db: Session = Depends(get_db),
 ):
     """Delete a place type by its ID."""
-
-    logging.debug(
-        "Deleting place type: id=%s",
-        id,
-    )
-
     try:
         stmt = (
             delete(PlaceType)
@@ -353,10 +302,7 @@ def delete_place_type(
         if deleted_id is None:
             db.rollback()
 
-            logging.debug(
-                "Place type not found: id=%s",
-                id,
-            )
+            logging.debug(f'{id=}')
 
             raise HTTPException(
                 status_code=404,

@@ -19,16 +19,19 @@ class Place(Base):
     name: Mapped[str] = mapped_column(String(255), unique=True)
     type_id: Mapped[str] = mapped_column(String(36), ForeignKey("places_types.id"))
     asset_id: Mapped[Optional[str]] = mapped_column(String(36))
-    # PostGIS geometry column for geographic queries; latitude/longitude are derived from this
-    geom: Mapped[WKBElement] = mapped_column(Geometry("POINT", srid=4326))
+    # PostGIS geometry column; not restricted to POINT so polygon shapes (e.g. zip code boundaries) can be stored too
+    geom: Mapped[WKBElement] = mapped_column(Geometry(srid=4326))
 
     @property
-    def latitude(self) -> float:
-        return to_shape(self.geom).y
+    def geometry_type(self) -> str:
+        # WKT type keyword of the stored shape, e.g. "POINT" or "POLYGON"
+        return to_shape(self.geom).geom_type.upper()
 
     @property
-    def longitude(self) -> float:
-        return to_shape(self.geom).x
+    def geometry_data(self) -> str:
+        # raw WKT coordinate content with the outer type wrapper stripped off
+        wkt = to_shape(self.geom).wkt
+        return wkt[wkt.index("(") + 1 : -1]
 
 
 class PlaceType(Base):

@@ -20,13 +20,13 @@ class PlaceCreate(BaseModel):
         description="Cross-referenced ID of the corresponding asset in the assets service",
         examples=["00589010-cb58-11f0-ba61-e18b1d833213"]
     )
-    latitude: float = Field(
+    geometry_type: str = Field(
         ...,
-        description="Latitude coordinate (WGS84)",
-        examples=[15.56878, 40.7128, 48.8566]
+        description="WKT geometry type keyword",
+        examples=["POINT", "POLYGON"]
     )
-    longitude: float = Field(
+    geometry_data: str = Field(
         ...,
-        description="Longitude coordinate (WGS84)",
-        examples=[70.5678, -74.0060, 2.2922]
+        description="Raw WKT coordinate content without the type wrapper, e.g. a point's 'x y' or a polygon's '(x y, x y, ...)' ring",
+        examples=["77.5946 12.9716", "(77.5 12.9, 77.6 12.9, 77.6 13.0, 77.5 12.9)"]
     )

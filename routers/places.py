@@ -40,7 +40,7 @@ def create_place(
                 type_id=place.type_id,
                 asset_id=place.asset_id,
                 geom=func.ST_GeomFromText(
-                    place.geometry,
+                    f"{place.geometry_type}({place.geometry_data})",  # rebuild WKT from type + raw coordinates
                     4326,
                 ),  # Convert WKT to geometry
             )
@@ -62,12 +62,12 @@ def create_place(
         )
 
     return PlaceResponse(
-        id=place.id,
-        name=place.name,
-        type_id=place.type_id,
-        asset_id=place.asset_id,
-        latitude=place.latitude,
-        longitude=place.longitude,
+        id=new_place.id,
+        name=new_place.name,
+        type_id=new_place.type_id,
+        asset_id=new_place.asset_id,
+        geometry_type=new_place.geometry_type,
+        geometry_data=new_place.geometry_data,
     )
 
 
@@ -178,8 +178,8 @@ def get_place(
         name=place.name,
         type_id=place.type_id,
         asset_id=place.asset_id,
-        latitude=place.latitude,
-        longitude=place.longitude,
+        geometry_type=place.geometry_type,
+        geometry_data=place.geometry_data,
     )
 
 
@@ -205,7 +205,7 @@ def update_place(
                 type_id=place.type_id,
                 asset_id=place.asset_id,
                 geom=func.ST_GeomFromText(
-                    place.geometry,
+                    f"{place.geometry_type}({place.geometry_data})",  # rebuild WKT from type + raw coordinates
                     4326,
                 ),  # Convert WKT to geometry
             )
@@ -239,12 +239,12 @@ def update_place(
         )
 
     return PlaceResponse(
-        id=place.id,
-        name=place.name,
-        type_id=place.type_id,
-        asset_id=place.asset_id,
-        latitude=place.latitude,
-        longitude=place.longitude,
+        id=updated_place.id,
+        name=updated_place.name,
+        type_id=updated_place.type_id,
+        asset_id=updated_place.asset_id,
+        geometry_type=updated_place.geometry_type,
+        geometry_data=updated_place.geometry_data,
     )
 
 
