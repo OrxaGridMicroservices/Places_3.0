@@ -28,10 +28,24 @@ class Place(Base):
         return to_shape(self.geom).geom_type.upper()
 
     @property
-    def geometry_data(self) -> str:
-        # raw WKT coordinate content with the outer type wrapper stripped off
-        wkt = to_shape(self.geom).wkt
-        return wkt[wkt.index("(") + 1 : -1]
+    def geometry_data(self):
+        geometry = to_shape(self.geom)
+
+        if geometry.geom_type.upper() == "POINT":
+            return list(geometry.coords[0])
+
+        if geometry.geom_type.upper() == "LINESTRING":
+            return [list(point) for point in geometry.coords]
+
+        if geometry.geom_type.upper() == "POLYGON":
+            return [
+                list(point)
+                for point in geometry.exterior.coords
+            ]
+
+        raise ValueError(
+            f"Unsupported geometry type: {geometry.geom_type}"
+        )
 
 
 class PlaceType(Base):

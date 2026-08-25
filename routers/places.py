@@ -13,6 +13,7 @@ from response_models.places_model import (
     PlaceListResponse,
     PlaceDeleteResponse,
 )
+import utlis
 
 
 router = APIRouter(
@@ -31,18 +32,25 @@ def create_place(
     place: PlaceCreate,
     db: Session = Depends(get_db),
 ):
-    """Create a new place."""
+    """
+    Create a new place.
+    Refer GeometryType enum for geometry_type.
+    """
+
     try:
+        # Build PostGIS geometry from geometry_type and geometry_data.
+        geom = utlis.build_geometry(
+            place.geometry_type,
+            place.geometry_data,
+        )
+
         stmt = (
             insert(Place)
             .values(
                 name=place.name,
                 type_id=place.type_id,
                 asset_id=place.asset_id,
-                geom=func.ST_GeomFromText(
-                    f"{place.geometry_type}({place.geometry_data})",  # rebuild WKT from type + raw coordinates
-                    4326,
-                ),  # Convert WKT to geometry
+                geom=geom,
             )
             .returning(Place)  # Return the inserted Place
         )
@@ -197,6 +205,12 @@ def update_place(
     """Update an existing place."""
 
     try:
+        # Build PostGIS geometry from geometry_type and geometry_data.
+        geom = utlis.build_geometry(
+            place.geometry_type,
+            place.geometry_data,
+        )
+
         stmt = (
             update(Place)
             .where(Place.id == place_id)
@@ -204,19 +218,19 @@ def update_place(
                 name=place.name,
                 type_id=place.type_id,
                 asset_id=place.asset_id,
-                geom=func.ST_GeomFromText(
-                    f"{place.geometry_type}({place.geometry_data})",  # rebuild WKT from type + raw coordinates
-                    4326,
-                ),  # Convert WKT to geometry
+                # Update the stored PostGIS geometry using the new
+                geom=geom,
             )
-            .returning(Place)  # Return the updated Place
+            .returning(Place)
         )
 
         result = db.execute(stmt)
 
-        updated_place = result.scalar_one_or_none()  # Get the updated Place
-        logging.debug(f'{updated_place=}')
+        # Get the updated Place returned by the database.
+        updated_place = result.scalar_one_or_none()
+        logging.debug(f"{updated_place=}")
 
+        # No row was updated, so the requested place does not exist.
         if updated_place is None:
             db.rollback()
 

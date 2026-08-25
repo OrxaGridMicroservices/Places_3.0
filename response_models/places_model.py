@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional
+from pydantic import BaseModel, Field
+from typing import Optional
+
+from request_models.places_model import GeometryData, GeometryType
 
 
 class PlaceResponse(BaseModel):
@@ -25,15 +27,19 @@ class PlaceResponse(BaseModel):
         description="Cross-referenced ID of the corresponding asset in the assets service",
         examples=["00589010-cb58-11f0-ba61-e18b1d833213"]
     )
-    geometry_type: str = Field(
-        ...,
-        description="WKT geometry type keyword",
-        examples=["POINT", "POLYGON"]
+    geometry_type: GeometryType = Field(
+            ...,
+            description="Type of geometry",
+            examples=["POINT"],
     )
-    geometry_data: str = Field(
-        ...,
-        description="Raw WKT coordinate content without the type wrapper, e.g. a point's 'x y' or a polygon's '(x y, x y, ...)' ring",
-        examples=["77.5946 12.9716", "(77.5 12.9, 77.6 12.9, 77.6 13.0, 77.5 12.9)"]
+    
+    geometry_data: GeometryData = Field(
+            ...,
+            description=(
+                "Coordinates matching geometry_type: "
+                "a single [x, y] pair for POINT, "
+                "or a list of [x, y] pairs for LINESTRING/POLYGON"
+            )
     )
 
 
