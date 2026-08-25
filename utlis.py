@@ -1,7 +1,11 @@
 from sqlalchemy import func
 from sqlalchemy.sql.elements import ColumnElement
 
-from request_models.places_model import Coordinate, GeometryData, GeometryType
+from request_models.places_model import (
+    Coordinate,
+    GeometryData,
+    GeometryType,
+)
 
 # https://postgis.net/docs/ST_MakePoint.html
 def make_point_geometry(data: Coordinate) -> ColumnElement:
