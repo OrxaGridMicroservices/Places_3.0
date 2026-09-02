@@ -1,0 +1,61 @@
+name: Places-3.0 Docker Image CI
+
+on:
+  # push:
+  #   branches: [ main ]
+  schedule:
+    - cron: "30 15 * * *"   # runs at 15:30 UTC and 9 PM IST
+  workflow_dispatch:
+
+jobs:
+
+  build:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    env:  
+     ECR_REPO: places-3.0
+     GIT_BRANCH: main
+    steps:
+    - name: Checkout The Repository
+      uses: actions/checkout@v3
+        
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+      
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+     
+    - name: Build Docker Image
+      run: docker build . --file Dockerfile --tag ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO }}
+
+    - name: Trivy - CVE Scan
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        image-ref: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO }}
+        format: table
+        output: trivy-report.txt
+        severity: CRITICAL,HIGH
+        ignore-unfixed: true
+        exit-code: 1
+        skip-files: "**/sboms/*.json,**/pip/_vendor/bom.cdx.json"
+
+    - name: Upload Trivy report artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-report
+        path: trivy-report.txt
+
+    - name: Push docker image
+      run: docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO }}
+
+    - name: Tag the image with your build number
+      run: docker tag ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO }} ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ env.GIT_BRANCH }}-${{github.run_number}}
+
+    - name: Push the tagged Image
+      run: docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ env.GIT_BRANCH }}-${{github.run_number}}
