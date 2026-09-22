@@ -13,33 +13,36 @@ class GeometryType(str, Enum):
 Coordinate = List[float]
 GeometryData = Union[Coordinate, List[Coordinate]]
 
+
 class PlaceCreate(BaseModel):
     """Request model for creating a new place."""
 
     name: str = Field(
         ...,
         description="Name of the place",
-        examples=["India"]
+        examples=["India"],
     )
+
     type_id: str = Field(
         ...,
         description="place type id",
         examples=["00589010-cb58-11f0-ba61-e18b1d833212"],
     )
+
     asset_id: Optional[str] = Field(
         default=None,
         description="Cross-referenced ID of the corresponding asset",
         examples=["00589010-cb58-11f0-ba61-e18b1d833213"],
     )
 
-    geometry_type: GeometryType = Field(
-        ...,
+    geometry_type: Optional[GeometryType] = Field(
+        default=None,
         description="Type of geometry",
         examples=["POINT"],
     )
 
-    geometry_data: GeometryData = Field(
-        ...,
+    geometry_data: Optional[GeometryData] = Field(
+        default=None,
         description=(
             "Coordinates matching geometry_type: "
             "a single [x, y] pair for POINT, "
@@ -58,13 +61,31 @@ class PlaceCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_geometry_data(self):
+        # Geometry is completely optional.
+        if self.geometry_type is None and self.geometry_data is None:
+            return self
+
+        # geometry_type and geometry_data must be provided together.
+        if self.geometry_type is None:
+            raise ValueError(
+                "geometry_type is required when geometry_data is provided"
+            )
+
+        if self.geometry_data is None:
+            raise ValueError(
+                "geometry_data is required when geometry_type is provided"
+            )
+
         data = self.geometry_data
 
         if self.geometry_type == GeometryType.POINT:
             if (
                 not isinstance(data, list)
                 or len(data) != 2
-                or not all(isinstance(value, (int, float)) for value in data)
+                or not all(
+                    isinstance(value, (int, float))
+                    for value in data
+                )
             ):
                 raise ValueError(
                     "POINT geometry_data must be a single [x, y] coordinate"
@@ -77,7 +98,10 @@ class PlaceCreate(BaseModel):
             or not all(
                 isinstance(point, list)
                 and len(point) == 2
-                and all(isinstance(value, (int, float)) for value in point)
+                and all(
+                    isinstance(value, (int, float))
+                    for value in point
+                )
                 for point in data
             )
         ):
