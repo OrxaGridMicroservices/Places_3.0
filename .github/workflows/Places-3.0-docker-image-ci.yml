@@ -59,3 +59,26 @@ jobs:
 
     - name: Push the tagged Image
       run: docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ env.GIT_BRANCH }}-${{github.run_number}}
+
+  deploy:
+    name: Deploy to Server
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      ECR_REPO: places-3.0
+    steps:
+      - name: SSH into factory server and auto deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST_SERVER }}
+          username: ${{ secrets.USER_SERVER }}
+          key: ${{ secrets.SSH_KEY_SERVER }}
+          port: ${{ secrets.PORT_SERVER }}
+          timeout: 120s
+          script: |
+            pwd
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPO }}:latest
+            cd Orchestration-3.0/
+            pwd
+            docker-compose up -d
