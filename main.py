@@ -11,6 +11,9 @@ from routers.places_types import (
     seed_default_place_types,
 )
 
+#for testing 
+print("CACHE TEST - VERSION 2")
+
 # Create tables
 Base.metadata.create_all(engine)
 
