@@ -1,11 +1,11 @@
 name: Places-3.0 Docker Image CI
 
 on:
-  # push:
-  #   branches: [ main ]
-  schedule:
-    - cron: "30 15 * * *"   # runs at 15:30 UTC and 9 PM IST
-  workflow_dispatch:
+  push:
+    branches: [ feature-UDMS-6070-docker-image-caching ]
+  # schedule:
+  #   - cron: "30 15 * * *"   # runs at 15:30 UTC and 9 PM IST
+  # workflow_dispatch:
 
 jobs:
 
