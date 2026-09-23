@@ -34,15 +34,20 @@ def create_place(
 ):
     """
     Create a new place.
-    Refer GeometryType enum for geometry_type.
+
+    Geometry is optional. When geometry is not provided,
+    geom is stored as NULL
     """
 
     try:
-        # Build PostGIS geometry from geometry_type and geometry_data.
-        geom = utlis.build_geometry(
-            place.geometry_type,
-            place.geometry_data,
-        )
+        print("place=",place)
+        geom = None
+
+        if place.geometry_type is not None and place.geometry_data is not None:
+            geom = utlis.build_geometry(
+                place.geometry_type,
+                place.geometry_data,
+            )
 
         stmt = (
             insert(Place)
@@ -52,32 +57,29 @@ def create_place(
                 asset_id=place.asset_id,
                 geom=geom,
             )
-            .returning(Place)  # Return the inserted Place
+            .returning(Place)
         )
+
         result = db.execute(stmt)
+        new_place = result.scalar_one()
 
-        new_place = result.scalar_one()  # Get the inserted Place
-        logging.debug(f'{new_place=}')
+        db.commit()
 
-        db.commit()  # Save the insert
+        return PlaceResponse(
+            id=new_place.id,
+            name=new_place.name,
+            type_id=new_place.type_id,
+            asset_id=new_place.asset_id,
+            geometry_type=new_place.geometry_type,
+            geometry_data=new_place.geometry_data,
+        )
 
     except Exception as e:
-        db.rollback()  # Undo the insert
-
+        db.rollback()
         raise HTTPException(
             status_code=400,
             detail=str(e),
         )
-
-    return PlaceResponse(
-        id=new_place.id,
-        name=new_place.name,
-        type_id=new_place.type_id,
-        asset_id=new_place.asset_id,
-        geometry_type=new_place.geometry_type,
-        geometry_data=new_place.geometry_data,
-    )
-
 
 @router.get(
     "",
@@ -206,10 +208,12 @@ def update_place(
 
     try:
         # Build PostGIS geometry from geometry_type and geometry_data.
-        geom = utlis.build_geometry(
-            place.geometry_type,
-            place.geometry_data,
-        )
+        geom = None
+        if place.geometry_type is not None and place.geometry_data is not None:
+            geom = utlis.build_geometry(
+                place.geometry_type,
+                place.geometry_data,
+            )
 
         stmt = (
             update(Place)

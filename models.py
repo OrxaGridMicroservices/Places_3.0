@@ -20,15 +20,23 @@ class Place(Base):
     type_id: Mapped[str] = mapped_column(String(36), ForeignKey("places_types.id"))
     asset_id: Mapped[Optional[str]] = mapped_column(String(36))
     # PostGIS geometry column; not restricted to POINT so polygon shapes (e.g. zip code boundaries) can be stored too
-    geom: Mapped[WKBElement] = mapped_column(Geometry(srid=4326))
+    geom: Mapped[Optional[WKBElement]] = mapped_column(
+        Geometry(srid=4326),
+        nullable=True,
+    )
 
     @property
-    def geometry_type(self) -> str:
-        # WKT type keyword of the stored shape, e.g. "POINT" or "POLYGON"
+    def geometry_type(self):
+        if self.geom is None:
+            return None
+
         return to_shape(self.geom).geom_type.upper()
 
     @property
     def geometry_data(self):
+        if self.geom is None:
+            return None
+
         geometry = to_shape(self.geom)
 
         if geometry.geom_type.upper() == "POINT":
