@@ -1,0 +1,5 @@
+place_types:
+  - name: Country
+  - name: State
+  - name: City
+  - name: asset
