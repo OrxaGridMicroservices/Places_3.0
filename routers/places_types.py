@@ -1,5 +1,8 @@
 import logging
+from pathlib import Path
 from typing import Optional
+
+import yaml
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.orm import Session
@@ -15,12 +18,25 @@ from response_models.place_types_model import (
 
 router = APIRouter(prefix="/places/types", tags=["place/types"])
 
-DEFAULT_PLACE_TYPES = [
-    {"name": "Country"},
-    {"name": "State"},
-    {"name": "City"},
-    {"name": "asset"},
-]
+# Get the path of the default place types YAML file
+PLACE_TYPES_SEED_FILE = Path(__file__).resolve().parent.parent / "place_types.yaml"
+
+
+def load_default_place_types(path: Path = PLACE_TYPES_SEED_FILE) -> list[dict]:
+    """Load default place types from the YAML file."""
+
+    # Open and read the YAML file
+    with open(path, encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+
+    # Extract place type names
+    place_types = []
+
+    for item in data.get("place_types", []):
+        place_types.append({"name": item["name"]})
+
+    return place_types
+
 
 # https://docs.sqlalchemy.org/en/20/core/connections.html#engine-insertmanyvalues
 def seed_default_place_types(db: Session):
@@ -33,9 +49,14 @@ def seed_default_place_types(db: Session):
     if table_has_data:
         return
 
+    place_types = load_default_place_types()
+
+    if not place_types:
+        return
+
     db.execute(
         insert(PlaceType),
-        DEFAULT_PLACE_TYPES,
+        place_types,
     )  # Insert default types
 
     db.commit()  # Save the insert
